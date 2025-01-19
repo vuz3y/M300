@@ -78,11 +78,13 @@
         state: present
 
     - name: Samba-Benutzer vmadmin erstellen
-      command: smbpasswd -a vmadmin
-      stdin: |
-        sml12345
-        sml12345
-      changed_when: false # Unterdrückt "changed" Meldung, da smbpasswd immer changed zurückgibt
+      expect:
+        command: smbpasswd -a vmadmin
+        responses:
+          "New password": "Sml12345**\n"
+          "Retype new password": "Sml12345**\n"
+        echo: yes
+      changed_when: false
 
     - name: Verzeichnis /home/vmadmin/testshare erstellen
       file:
