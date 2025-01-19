@@ -1,6 +1,7 @@
 ---
 - name: Samba auf vmLS4 einrichten
-  hosts: vmls4
+  hosts: localhost
+  connection: local
   become: true
   tasks:
     - name: Samba-Pakete installieren
