@@ -1,0 +1,169 @@
+---
+- name: Configure BIND9 DNS Server
+  hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Install BIND9 and dnsutils
+      apt:
+        name:
+          - bind9
+          - dnsutils
+        state: present
+
+    - name: Stop and disable systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: stopped
+        enabled: no
+
+    - name: Create BIND zone template from db.empty
+      command: cp /etc/bind/db.empty /etc/bind/db.template
+      args:
+        creates: /etc/bind/db.template
+
+    - name: Update zone template with correct nameserver
+      replace:
+        path: /etc/bind/db.template
+        regexp: 'localhost'
+        replace: 'ns.smartlearn.dmz'
+        backup: yes
+
+    - name: Configure named.conf.local
+      blockinfile:
+        path: /etc/bind/named.conf.local
+        create: yes
+        block: |
+          zone "smartlearn.dmz" {
+              type master;
+              file "/etc/bind/db.smartlearn.dmz";
+          };
+
+          zone "220.168.192.in-addr.arpa" {
+              type master;
+              file "/etc/bind/db.192.168.220";
+          };
+
+          zone "smartlearn.lan" {
+              type master;
+              file "/etc/bind/db.smartlearn.lan";
+          };
+
+          zone "210.168.192.in-addr.arpa" {
+              type master;
+              file "/etc/bind/db.192.168.210";
+          };
+
+    - name: Configure named.conf.options
+      copy:
+        dest: /etc/bind/named.conf.options
+        content: |
+          options {
+                  directory "/var/cache/bind";
+          
+                  forwarders {
+                          8.8.8.8;
+                  };
+          
+                  allow-recursion {
+                          192.168.220.0/24;
+                          192.168.210.0/24;
+                  };
+          
+                  dnssec-validation auto;
+          
+                  listen-on-v6 { any; };
+          };
+        mode: 0644
+      notify: restart bind9
+
+    - name: Update listen-on-v6 in named.conf.options
+      lineinfile:
+        path: /etc/bind/named.conf.options
+        regexp: '^(\\s*)listen-on-v6'
+        line: '        listen-on-v6 { any; };'
+        backrefs: yes
+      notify: restart bind9
+
+    - name: Configure db.smartlearn.dmz
+      copy:
+        dest: /etc/bind/db.smartlearn.dmz
+        content: |
+          $TTL    85400
+          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+                                        1          ; Serial
+                                        604800     ; Refresh
+                                        86400      ; Retry
+                                        2419200    ; Expire
+                                        86400 )    ; Negative Cache TTL
+          ;
+          @       IN      NS      ns.smartlearn.dmz.
+          ns      IN      A       192.168.220.13
+          vmlf1   IN      A       192.168.220.1
+          vmls3   IN      A       192.168.220.13
+          www     IN      A       192.168.220.13
+      notify: restart bind9
+
+    - name: Configure db.192.168.220
+      copy:
+        dest: /etc/bind/db.192.168.220
+        content: |
+          $TTL    85400
+          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+                                        1          ; Serial
+                                        604800     ; Refresh
+                                        86400      ; Retry
+                                        2419200    ; Expire
+                                        86400 )    ; Negative Cache TTL
+          ;
+          @       IN      NS      ns.smartlearn.dmz.
+          1       IN      PTR     vmlf1.smartlearn.dmz.
+          13      IN      PTR     vmls3.smartlearn.dmz.
+      notify: restart bind9
+
+    - name: Configure db.smartlearn.lan
+      copy:
+        dest: /etc/bind/db.smartlearn.lan
+        content: |
+          $TTL    85400
+          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+                                        1          ; Serial
+                                        604800     ; Refresh
+                                        86400      ; Retry
+                                        2419200    ; Expire
+                                        86400 )    ; Negative Cache TTL
+          ;
+          @       IN      NS      ns.smartlearn.dmz.
+          ns      IN      A       192.168.220.13
+          vmls4   IN      A       192.168.210.64
+          vmls5   IN      A       192.168.210.65
+          www     IN      A       192.168.220.13
+      notify: restart bind9
+
+    - name: Configure db.192.168.210
+      copy:
+        dest: /etc/bind/db.192.168.210
+        content: |
+          $TTL    85400
+          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+                                        1          ; Serial
+                                        604800     ; Refresh
+                                        86400      ; Retry
+                                        2419200    ; Expire
+                                        86400 )    ; Negative Cache TTL
+          ;
+          @       IN      NS      ns.smartlearn.dmz.
+          64      IN      PTR     vmls4.smartlearn.lan.
+          65      IN      PTR     vmls5.smartlearn.lan.
+      notify: restart bind9
+
+  handlers:
+    - name: restart bind9
+      service:
+        name: named
+        state: restarted
