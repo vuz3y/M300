@@ -1,0 +1,102 @@
+---
+- name: Samba auf vmLS4 einrichten
+  hosts: vmls4
+  become: true
+  tasks:
+    - name: Samba-Pakete installieren
+      apt:
+        name:
+          - samba
+          - samba-common-bin
+          - smbclient
+          - heimdal-clients
+          - libpam-heimdal
+          - libnss-winbind
+          - libpam-winbind
+        state: present
+        update_cache: yes
+
+    - name: Originale Samba-Konfiguration sichern
+      copy:
+        src: /etc/samba/smb.conf
+        dest: /etc/samba/smb.conf.orig
+        remote_src: yes
+
+    - name: Leere smb.conf erstellen
+      file:
+        path: /etc/samba/smb.conf
+        state: touch
+        mode: 0644
+
+    - name: Samba-Konfiguration hinzufügen
+      blockinfile:
+        path: /etc/samba/smb.conf
+        block: |
+          [global]
+          workgroup = SAMBADOM
+          realm = SAMBADOM.SMARTLEARN.LAN
+          security = ADS
+          winbind enum users = yes
+          winbind enum groups = yes
+          winbind use default domain = yes
+          winbind refresh tickets = yes
+          template shell = /bin/bash
+          idmap config * : range = 10000 - 19999
+          idmap config M159 : backend = rid
+          idmap config M159 : range = 1000000 - 1999999
+          inherit acls = yes
+          store dos attributes = yes
+          client ipc signing = auto
+          vfs objects = acl_xattr
+          ldap server require strong auth = no
+
+          [testshare]
+          path = /home/vmadmin/testshare
+          read only = no
+          guest ok = no
+          valid users = vmadmin
+
+    - name: Samba neu starten
+      systemd:
+        name: smbd
+        state: restarted
+
+    - name: Konfiguration mit testparm überprüfen
+      command: testparm
+      register: testparm_result
+      changed_when: false
+
+    - name: Debug testparm output
+      debug:
+        var: testparm_result.stdout_lines
+
+    - name: Unix-Benutzer vmadmin erstellen, falls nicht vorhanden
+      user:
+        name: vmadmin
+        shell: /bin/bash
+        password: "$6$rounds=656000$kuV/Nf.6U/kFl.i$Jv47LwBtC.8iCp/7/F/b7.6/5jGzPpyK.6H5M4v9H1bQ55W/x.K4n8pQo44yTms4a/bF.c/fW.480x31/u9yV." # Sml12345** gehasht
+        state: present
+
+    - name: Samba-Benutzer vmadmin erstellen
+      command: smbpasswd -a vmadmin
+      stdin: |
+        sml12345
+        sml12345
+      changed_when: false # Unterdrückt "changed" Meldung, da smbpasswd immer changed zurückgibt
+
+    - name: Verzeichnis /home/vmadmin/testshare erstellen
+      file:
+        path: /home/vmadmin/testshare
+        state: directory
+        owner: vmadmin
+        group: vmadmin
+        mode: 0755
+    
+    - name: Kopiere smb.conf.orig in das Verzeichnis /home/vmadmin
+      copy:
+        src: /etc/samba/smb.conf.orig
+        dest: /home/vmadmin/smb.conf.orig
+        remote_src: yes
+        owner: vmadmin
+        group: vmadmin
+        mode: 0644
