@@ -70,30 +70,6 @@
     - name: Debug testparm output
       debug:
         var: testparm_result.stdout_lines
-
-    - name: Unix-Benutzer vmadmin erstellen, falls nicht vorhanden
-      user:
-        name: vmadmin
-        shell: /bin/bash
-        password: "$6$rounds=656000$kuV/Nf.6U/kFl.i$Jv47LwBtC.8iCp/7/F/b7.6/5jGzPpyK.6H5M4v9H1bQ55W/x.K4n8pQo44yTms4a/bF.c/fW.480x31/u9yV." # Sml12345** gehasht
-        state: present
-
-    - name: Samba-Benutzer vmadmin erstellen
-      expect:
-        command: smbpasswd -a vmadmin
-        responses:
-          "New password": "Sml12345**\n"
-          "Retype new password": "Sml12345**\n"
-        echo: yes
-      changed_when: false
-
-    - name: Verzeichnis /home/vmadmin/testshare erstellen
-      file:
-        path: /home/vmadmin/testshare
-        state: directory
-        owner: vmadmin
-        group: vmadmin
-        mode: 0755
     
     - name: Kopiere smb.conf.orig in das Verzeichnis /home/vmadmin
       copy:
