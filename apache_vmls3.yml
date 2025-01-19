@@ -1,0 +1,95 @@
+---
+- hosts: localhost
+  connection: local
+  become: true
+  tasks:
+
+    - name: Install Apache2
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    - name: Create directory structure for vmls3
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - /www/www.smartlearn.dmz
+        - /www/www.smartlearn.dmz/err
+
+    - name: Download website files for vmls3
+      get_url:
+        url: "https://raw.githubusercontent.com/vuz3y/M300/main/www/{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: 0644
+      loop:
+        - { src: 'www.smartlearn.dmz/index.html', dest: '/www/www.smartlearn.dmz/index.html' }
+        - { src: 'www.smartlearn.dmz/err/404.html', dest: '/www/www.smartlearn.dmz/err/404.html' }
+
+
+    - name: Create wwwadmin group
+      group:
+        name: wwwadmin
+        state: present
+
+    - name: Add vmadmin to wwwadmin group
+      user:
+        name: vmadmin  # Replace with actual username if different
+        group: wwwadmin
+        append: yes
+
+    - name: Set ownership and permissions for vmls3 web directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: wwwadmin
+        mode: 0750 # Give wwwadmin write access for potential content updates
+      loop:
+        - /www/www.smartlearn.dmz
+        - /www/www.smartlearn.dmz/err
+
+    - name: Configure Apache virtual host for vmls3 (www.smartlearn.dmz)
+      blockinfile:
+        path: /etc/apache2/sites-available/www.smartlearn.dmz.conf
+        create: yes
+        block: |
+          <VirtualHost *:80>
+              ServerName www.smartlearn.dmz
+              DocumentRoot /www/www.smartlearn.dmz
+              ErrorDocument 404 /err/404.html
+
+              <Directory /www/www.smartlearn.dmz>
+                  AllowOverride All  # or specific directives as needed
+                  Require all granted  # Or restrict access as needed
+              </Directory>
+          </VirtualHost>
+
+    - name: Enable Apache virtual host and modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - rewrite   # Enable for .htaccess or mod_rewrite if used
+        - headers   # If specific header manipulations are required
+      notify: restart apache2
+
+    - name: Enable vhost configuration
+      a2ensite:
+        name: www.smartlearn.dmz.conf
+        state: present
+      notify: restart apache2
+
+
+    - name: Disable default Apache site
+      a2dissite:
+        name: 000-default.conf
+      notify: restart apache2
+
+  handlers:
+    - name: restart apache2
+      service:
+        name: apache2
+        state: restarted
