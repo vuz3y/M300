@@ -123,6 +123,7 @@
           srv-01  IN      A       172.27.234.130
           srv-02  IN      A       172.27.234.131
           www     IN      A       172.27.234.131
+          ftp     IN      A       172.27.234.131
         mode: 0644
       notify: restart bind9
 
@@ -141,10 +142,6 @@
           @       IN      NS      ns.devtech.swiss.
           130     IN      PTR     srv-01.devtech.swiss.
           131     IN      PTR     srv-02.devtech.swiss.
-          ;143     IN      PTR     wop-01.devtech.swiss.
-          ;141     IN      PTR     wop-02.devtech.swiss.
-          ;144     IN      PTR     wop-03.devtech.swiss.
-          ;142     IN      PTR     wop-04.devtech.swiss.
         mode: 0644
       notify: restart bind9
 
