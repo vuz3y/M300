@@ -124,6 +124,7 @@
           srv-02  IN      A       172.27.234.131
           www     IN      A       172.27.234.131
           ftp     IN      A       172.27.234.131
+          fw-01   IN      A       172.27.234.129
         mode: 0644
       notify: restart bind9
 
@@ -142,6 +143,7 @@
           @       IN      NS      ns.devtech.swiss.
           130     IN      PTR     srv-01.devtech.swiss.
           131     IN      PTR     srv-02.devtech.swiss.
+          129     IN      PTR     fw-01.devtech.swiss.
         mode: 0644
       notify: restart bind9
 
@@ -160,8 +162,9 @@
           @       IN      NS      ns.devtech.swiss.
           ns      IN      A       172.27.234.130
           www     IN      A       172.27.234.131
-          srv-03  IN      A       10.224.30.65
-          srv-04  IN      A       10.224.30.66
+          srv-03  IN      A       10.224.30.66
+          srv-04  IN      A       10.224.30.67
+          fw-01   IN      A       10.224.30.65
         mode: 0644
       notify: restart bind9
 
@@ -178,8 +181,9 @@
                                         86400 )     ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
-          65      IN      PTR     srv-03.devtech.intern.
-          66      IN      PTR     srv-04.devtech.intern.
+          65      IN      PTR     fw-01.devtech.intern.
+          66      IN      PTR     srv-03.devtech.intern.
+          67      IN      PTR     srv-04.devtech.intern.
         mode: 0644
       notify: restart bind9
 
