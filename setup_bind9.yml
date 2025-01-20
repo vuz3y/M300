@@ -31,7 +31,7 @@
       replace:
         path: /etc/bind/db.template
         regexp: 'localhost'
-        replace: 'ns.smartlearn.dmz'
+        replace: 'ns.devtech.swiss'
         backup: yes
 
     - name: Configure named.conf.local
@@ -39,24 +39,24 @@
         path: /etc/bind/named.conf.local
         create: yes
         block: |
-          zone "smartlearn.dmz" {
+          zone "devtech.swiss" {
               type master;
-              file "/etc/bind/db.smartlearn.dmz";
+              file "/etc/bind/db.devtech.swiss";
           };
 
-          zone "220.168.192.in-addr.arpa" {
+          zone "234.27.172.in-addr.arpa" {
               type master;
-              file "/etc/bind/db.192.168.220";
+              file "/etc/bind/db.172.27.234";
           };
 
-          zone "smartlearn.lan" {
+          zone "devtech.intern" {
               type master;
-              file "/etc/bind/db.smartlearn.lan";
+              file "/etc/bind/db.devtech.intern";
           };
 
-          zone "210.168.192.in-addr.arpa" {
+          zone "30.224.10.in-addr.arpa" {
               type master;
-              file "/etc/bind/db.192.168.210";
+              file "/etc/bind/db.10.224.30";
           };
 
     - name: Configure named.conf.options
@@ -71,8 +71,8 @@
                   };
           
                   allow-recursion {
-                          192.168.220.0/24;
-                          192.168.210.0/24;
+                          172.27.234.128/27;
+                          10.224.30.64/26;
                   };
           
                   dnssec-validation auto;
@@ -90,76 +90,84 @@
         backrefs: yes
       notify: restart bind9
 
-    - name: Configure db.smartlearn.dmz
+    - name: Configure db.devtech.swiss
       copy:
-        dest: /etc/bind/db.smartlearn.dmz
+        dest: /etc/bind/db.devtech.swiss
         content: |
           $TTL    85400
-          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+          @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
                                         1          ; Serial
                                         604800     ; Refresh
                                         86400      ; Retry
                                         2419200    ; Expire
                                         86400 )    ; Negative Cache TTL
           ;
-          @       IN      NS      ns.smartlearn.dmz.
-          ns      IN      A       192.168.220.13
-          vmlf1   IN      A       192.168.220.1
-          vmls3   IN      A       192.168.220.13
-          www     IN      A       192.168.220.13
+          @       IN      NS      ns.devtech.swiss.
+          ns      IN      A       172.27.234.130
+          srv-01  IN      A       172.27.234.130
+          srv-02  IN      A       172.27.234.131
+          www     IN      A       172.27.234.131
+          # wop-01  IN      A       172.27.234.143
+          # wop-02  IN      A       172.27.234.141
+          # wop-03  IN      A       172.27.234.144
+          # wop-04  IN      A       172.27.234.142
       notify: restart bind9
 
-    - name: Configure db.192.168.220
+    - name: Configure db.172.27.234
       copy:
-        dest: /etc/bind/db.192.168.220
+        dest: /etc/bind/db.172.27.234
         content: |
           $TTL    85400
-          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+          @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
                                         1          ; Serial
                                         604800     ; Refresh
                                         86400      ; Retry
                                         2419200    ; Expire
                                         86400 )    ; Negative Cache TTL
           ;
-          @       IN      NS      ns.smartlearn.dmz.
-          1       IN      PTR     vmlf1.smartlearn.dmz.
-          13      IN      PTR     vmls3.smartlearn.dmz.
+          @       IN      NS      ns.devtech.swiss.
+          130     IN      PTR     srv-01.devtech.swiss.
+          131     IN      PTR     srv-02.devtech.swiss.
+          143     IN      PTR     wop-01.devtech.swiss.
+          141     IN      PTR     wop-02.devtech.swiss.
+          144     IN      PTR     wop-03.devtech.swiss.
+          142     IN      PTR     wop-04.devtech.swiss.
       notify: restart bind9
 
-    - name: Configure db.smartlearn.lan
+    - name: Configure db.devtech.intern
       copy:
-        dest: /etc/bind/db.smartlearn.lan
+        dest: /etc/bind/db.devtech.intern
         content: |
           $TTL    85400
-          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+          @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
                                         1          ; Serial
                                         604800     ; Refresh
                                         86400      ; Retry
                                         2419200    ; Expire
                                         86400 )    ; Negative Cache TTL
           ;
-          @       IN      NS      ns.smartlearn.dmz.
-          ns      IN      A       192.168.220.13
-          vmls4   IN      A       192.168.210.64
-          vmls5   IN      A       192.168.210.65
-          www     IN      A       192.168.220.13
+          @       IN      NS      ns.devtech.swiss.
+          ns      IN      A       172.27.234.130
+          www     IN      A       172.27.234.131
+          srv-03  IN      A       10.224.30.65
+          srv-04  IN      A       10.224.30.66
       notify: restart bind9
 
-    - name: Configure db.192.168.210
+    - name: Configure db.10.224.30
       copy:
-        dest: /etc/bind/db.192.168.210
+        dest: /etc/bind/db.10.224.30
         content: |
           $TTL    85400
-          @       IN      SOA     ns.smartlearn.dmz. root.smartlearn.dmz. (
+          @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
                                         1          ; Serial
                                         604800     ; Refresh
                                         86400      ; Retry
                                         2419200    ; Expire
                                         86400 )    ; Negative Cache TTL
           ;
-          @       IN      NS      ns.smartlearn.dmz.
-          64      IN      PTR     vmls4.smartlearn.lan.
-          65      IN      PTR     vmls5.smartlearn.lan.
+          @       IN      NS      ns.devtech.swiss.
+          65      IN      PTR     srv-03.devtech.intern.
+          66      IN      PTR     srv-04.devtech.intern.
       notify: restart bind9
 
   handlers:
