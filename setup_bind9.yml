@@ -22,6 +22,30 @@
         state: stopped
         enabled: no
 
+    - name: Create backup of named.conf
+      copy:
+        src: /etc/bind/named.conf
+        dest: /etc/bind/named.conf.backup
+        remote_src: yes
+
+    - name: Create backup of named.conf.options
+      copy:
+        src: /etc/bind/named.conf.options
+        dest: /etc/bind/named.conf.options.backup
+        remote_src: yes
+
+    - name: Create backup of named.conf.local
+      copy:
+        src: /etc/bind/named.conf.local
+        dest: /etc/bind/named.conf.local.backup
+        remote_src: yes
+
+    - name: Create backup of named.conf.default-zones
+      copy:
+        src: /etc/bind/named.conf.default-zones
+        dest: /etc/bind/named.conf.default-zones.backup
+        remote_src: yes        
+
     - name: Create BIND zone template from db.empty
       command: cp /etc/bind/db.empty /etc/bind/db.template
       args:
@@ -64,30 +88,22 @@
         dest: /etc/bind/named.conf.options
         content: |
           options {
-                  directory "/var/cache/bind";
-          
-                  forwarders {
-                          8.8.8.8;
-                  };
-          
-                  allow-recursion {
-                          172.27.234.128/27;
-                          10.224.30.64/26;
-                  };
-          
-                  dnssec-validation auto;
-          
-                  listen-on-v6 { any; };
+              directory "/etc/bind"; # Changed directory to /etc/bind
+
+              forwarders {
+                  8.8.8.8;
+              };
+
+              allow-recursion {
+                  172.27.234.128/27;
+                  10.224.30.64/26;
+              };
+
+              dnssec-validation auto;
+
+              listen-on-v6 { any; };
           };
         mode: 0644
-      notify: restart bind9
-
-    - name: Update listen-on-v6 in named.conf.options
-      lineinfile:
-        path: /etc/bind/named.conf.options
-        regexp: '^(\\s*)listen-on-v6'
-        line: '        listen-on-v6 { any; };'
-        backrefs: yes
       notify: restart bind9
 
     - name: Configure db.devtech.swiss
@@ -96,21 +112,18 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1          ; Serial
-                                        604800     ; Refresh
-                                        86400      ; Retry
-                                        2419200    ; Expire
-                                        86400 )    ; Negative Cache TTL
+                                        1           ; Serial
+                                        604800      ; Refresh
+                                        86400       ; Retry
+                                        2419200     ; Expire
+                                        86400 )     ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           ns      IN      A       172.27.234.130
           srv-01  IN      A       172.27.234.130
           srv-02  IN      A       172.27.234.131
           www     IN      A       172.27.234.131
-          # wop-01  IN      A       172.27.234.143
-          # wop-02  IN      A       172.27.234.141
-          # wop-03  IN      A       172.27.234.144
-          # wop-04  IN      A       172.27.234.142
+        mode: 0644
       notify: restart bind9
 
     - name: Configure db.172.27.234
@@ -119,19 +132,20 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1          ; Serial
-                                        604800     ; Refresh
-                                        86400      ; Retry
-                                        2419200    ; Expire
-                                        86400 )    ; Negative Cache TTL
+                                        1           ; Serial
+                                        604800      ; Refresh
+                                        86400       ; Retry
+                                        2419200     ; Expire
+                                        86400 )     ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           130     IN      PTR     srv-01.devtech.swiss.
           131     IN      PTR     srv-02.devtech.swiss.
-          143     IN      PTR     wop-01.devtech.swiss.
-          141     IN      PTR     wop-02.devtech.swiss.
-          144     IN      PTR     wop-03.devtech.swiss.
-          142     IN      PTR     wop-04.devtech.swiss.
+          ;143     IN      PTR     wop-01.devtech.swiss.
+          ;141     IN      PTR     wop-02.devtech.swiss.
+          ;144     IN      PTR     wop-03.devtech.swiss.
+          ;142     IN      PTR     wop-04.devtech.swiss.
+        mode: 0644
       notify: restart bind9
 
     - name: Configure db.devtech.intern
@@ -140,17 +154,18 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1          ; Serial
-                                        604800     ; Refresh
-                                        86400      ; Retry
-                                        2419200    ; Expire
-                                        86400 )    ; Negative Cache TTL
+                                        1           ; Serial
+                                        604800      ; Refresh
+                                        86400       ; Retry
+                                        2419200     ; Expire
+                                        86400 )     ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           ns      IN      A       172.27.234.130
           www     IN      A       172.27.234.131
           srv-03  IN      A       10.224.30.65
           srv-04  IN      A       10.224.30.66
+        mode: 0644
       notify: restart bind9
 
     - name: Configure db.10.224.30
@@ -159,16 +174,23 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1          ; Serial
-                                        604800     ; Refresh
-                                        86400      ; Retry
-                                        2419200    ; Expire
-                                        86400 )    ; Negative Cache TTL
+                                        1           ; Serial
+                                        604800      ; Refresh
+                                        86400       ; Retry
+                                        2419200     ; Expire
+                                        86400 )     ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           65      IN      PTR     srv-03.devtech.intern.
           66      IN      PTR     srv-04.devtech.intern.
+        mode: 0644
       notify: restart bind9
+
+    - name: Ensure BIND service is started and enabled
+      service:
+        name: named
+        state: started
+        enabled: yes
 
   handlers:
     - name: restart bind9
