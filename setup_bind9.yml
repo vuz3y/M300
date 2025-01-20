@@ -9,11 +9,12 @@
         update_cache: yes
         upgrade: yes
 
-    - name: Install BIND9 and dnsutils
+    - name: Install BIND9, dnsutils, and openssl
       apt:
         name:
           - bind9
           - dnsutils
+          - openssl
         state: present
 
     - name: Stop and disable systemd-resolved
@@ -21,6 +22,14 @@
         name: systemd-resolved
         state: stopped
         enabled: no
+
+    # rndc key tasks
+    - name: Generate rndc key
+      command: rndc-confgen -a -k ddns-key -c /etc/bind/ddns.key -r /dev/urandom
+      args:
+        creates: /etc/bind/ddns.key
+      notify:
+        - restart bind9
 
     - name: Create backup of named.conf
       copy:
@@ -58,7 +67,16 @@
         replace: 'ns.devtech.swiss'
         backup: yes
 
-    - name: Configure named.conf.local
+    # Include ddns key into named.conf
+    - name: Include DDNS key in named.conf
+      lineinfile:
+        path: /etc/bind/named.conf
+        line: 'include "/etc/bind/ddns.key";'
+        insertafter: EOF
+        create: yes
+        state: present
+
+    - name: Configure named.conf.local with DDNS
       blockinfile:
         path: /etc/bind/named.conf.local
         create: yes
@@ -66,21 +84,25 @@
           zone "devtech.swiss" {
               type master;
               file "/etc/bind/db.devtech.swiss";
+              allow-update { key ddns-key; };
           };
 
           zone "234.27.172.in-addr.arpa" {
               type master;
               file "/etc/bind/db.172.27.234";
+              allow-update { key ddns-key; };
           };
 
           zone "devtech.intern" {
               type master;
               file "/etc/bind/db.devtech.intern";
+              allow-update { key ddns-key; };
           };
 
           zone "30.224.10.in-addr.arpa" {
               type master;
               file "/etc/bind/db.10.224.30";
+              allow-update { key ddns-key; };
           };
 
     - name: Configure named.conf.options
@@ -112,11 +134,11 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1           ; Serial
-                                        604800      ; Refresh
-                                        86400       ; Retry
-                                        2419200     ; Expire
-                                        86400 )     ; Negative Cache TTL
+                                        2              ; Serial
+                                        604800         ; Refresh
+                                        86400          ; Retry
+                                        2419200        ; Expire
+                                        86400 )        ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           ns      IN      A       172.27.234.130
@@ -124,7 +146,6 @@
           srv-02  IN      A       172.27.234.131
           www     IN      A       172.27.234.131
           ftp     IN      A       172.27.234.131
-          fw-01   IN      A       172.27.234.129
         mode: 0644
       notify: restart bind9
 
@@ -134,16 +155,15 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1           ; Serial
-                                        604800      ; Refresh
-                                        86400       ; Retry
-                                        2419200     ; Expire
-                                        86400 )     ; Negative Cache TTL
+                                        2              ; Serial
+                                        604800         ; Refresh
+                                        86400          ; Retry
+                                        2419200        ; Expire
+                                        86400 )        ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           130     IN      PTR     srv-01.devtech.swiss.
           131     IN      PTR     srv-02.devtech.swiss.
-          129     IN      PTR     fw-01.devtech.swiss.
         mode: 0644
       notify: restart bind9
 
@@ -153,18 +173,17 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1           ; Serial
-                                        604800      ; Refresh
-                                        86400       ; Retry
-                                        2419200     ; Expire
-                                        86400 )     ; Negative Cache TTL
+                                        2              ; Serial
+                                        604800         ; Refresh
+                                        86400          ; Retry
+                                        2419200        ; Expire
+                                        86400 )        ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
           ns      IN      A       172.27.234.130
           www     IN      A       172.27.234.131
-          srv-03  IN      A       10.224.30.66
-          srv-04  IN      A       10.224.30.67
-          fw-01   IN      A       10.224.30.65
+          srv-03  IN      A       10.224.30.65
+          srv-04  IN      A       10.224.30.66
         mode: 0644
       notify: restart bind9
 
@@ -174,16 +193,15 @@
         content: |
           $TTL    85400
           @       IN      SOA     ns.devtech.swiss. root.devtech.swiss. (
-                                        1           ; Serial
-                                        604800      ; Refresh
-                                        86400       ; Retry
-                                        2419200     ; Expire
-                                        86400 )     ; Negative Cache TTL
+                                        2              ; Serial
+                                        604800         ; Refresh
+                                        86400          ; Retry
+                                        2419200        ; Expire
+                                        86400 )        ; Negative Cache TTL
           ;
           @       IN      NS      ns.devtech.swiss.
-          65      IN      PTR     fw-01.devtech.intern.
-          66      IN      PTR     srv-03.devtech.intern.
-          67      IN      PTR     srv-04.devtech.intern.
+          65      IN      PTR     srv-03.devtech.intern.
+          66      IN      PTR     srv-04.devtech.intern.
         mode: 0644
       notify: restart bind9
 
