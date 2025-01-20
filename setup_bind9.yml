@@ -88,7 +88,7 @@
         dest: /etc/bind/named.conf.options
         content: |
           options {
-              directory "/etc/bind"; # Changed directory to /etc/bind
+              directory "/var/cache/bind";
 
               forwarders {
                   8.8.8.8;
